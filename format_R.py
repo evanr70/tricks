@@ -2,12 +2,27 @@ import json
 import subprocess
 from tqdm import tqdm
 import argparse
+import os
 
 parser = argparse.ArgumentParser(description="Format an R notebook.")
 parser.add_argument(
     "filename", metavar="filename", help="enter the filename of the jupyter notebook"
 )
 args = parser.parse_args()
+
+r_script = [
+    "#!/usr/bin/env Rscript",
+    "\n",
+    'list.of.packages <- c("formatR")',
+    'new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]',
+    'if(length(new.packages)) install.packages(new.packages, repos="https://cran.ma.imperial.ac.uk/")',
+    "args = commandArgs(trailingOnly=TRUE)",
+    "formatR::tidy_source(args[1], file=args[1])",
+]
+
+with open("cli_formatR.r", "w") as f:
+    print("\n".join(r_script), file=f)
+
 
 with open(args.filename, "r") as f:
     json_data = json.load(f)
@@ -33,7 +48,9 @@ for cell in tqdm(json_data["cells"]):
             print("".join(source), file=f)
 
         # Call `black` to format the temporary file
-        process = subprocess.Popen(bash_command.split(), stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        process = subprocess.Popen(
+            bash_command.split(), stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT
+        )
         output, error = process.communicate()
 
         # Read in the formatted file
@@ -46,7 +63,7 @@ for cell in tqdm(json_data["cells"]):
         indices = [
             idx for idx, line in enumerate(formatted_code) if line in magic_lines
         ]
-        
+
         for idx in indices:
             formatted_code[idx] = formatted_code[idx].replace("# ", "")
 
@@ -55,3 +72,5 @@ for cell in tqdm(json_data["cells"]):
 
 with open(args.filename[:-6] + "_formatted.ipynb", "w") as f:
     json.dump(json_data, f)
+
+os.remove("cli_formatR.r")
