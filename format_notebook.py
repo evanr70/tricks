@@ -13,7 +13,7 @@ with open(args.filename, "r") as f:
     json_data = json.load(f)
 
 bash_command = "black tmp_file.py"
-for cell in json_data["cells"]:
+for cell in tqdm(json_data["cells"]):
     # Check if cell contains cod
     if cell["cell_type"] == "code":
         # Remove all magic lines (would be good to find a way to reinsert them)
@@ -33,7 +33,7 @@ for cell in json_data["cells"]:
             print("".join(source), file=f)
 
         # Call `black` to format the temporary file
-        process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
+        process = subprocess.Popen(bash_command.split(), stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         output, error = process.communicate()
 
         # Read in the formatted file
@@ -46,7 +46,7 @@ for cell in json_data["cells"]:
         indices = [
             idx for idx, line in enumerate(formatted_code) if line in magic_lines
         ]
-        print(indices)
+        
         for idx in indices:
             formatted_code[idx] = formatted_code[idx].replace("# ", "")
 
